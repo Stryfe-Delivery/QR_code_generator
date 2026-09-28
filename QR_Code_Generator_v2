@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="author" content="Lucky Hawthorne">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Code Generator v2</title>
+<style>
+  :root{
+    --bg:#0e1116; --card:#161a22; --line:#252b36; --text:#e7ebf2; --muted:#98a2b3;
+    --accent:#4f8cff; --accent2:#2f6fe0; --danger:#ff6b6b; --ok:#38d39f; --warn:#ffc857;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text); min-height:100vh;
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+  header h1{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}
+  header .sub{margin:0 0 24px;color:var(--muted);font-size:14px}
+  main{display:grid;gap:18px;grid-template-columns:1fr 1fr;align-items:start}
+  @media (max-width:820px){ main{grid-template-columns:1fr} }
+  .col{display:flex;flex-direction:column;gap:18px}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:18px; display:flex; flex-direction:column; gap:16px;
+  }
+  .card h2{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+  .field{display:flex;flex-direction:column;gap:7px}
+  label{font-size:13px;font-weight:600;color:#c8d0dc}
+  textarea,select{
+    width:100%; background:#0d1117; color:var(--text); border:1px solid var(--line);
+    border-radius:9px; padding:10px 12px; font:inherit; outline:none;
+  }
+  textarea{resize:vertical;min-height:74px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+  textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,140,255,.15)}
+  .seg{display:flex;gap:6px;background:#0d1117;padding:5px;border-radius:10px;border:1px solid var(--line)}
+  .seg button{
+    flex:1; background:transparent; border:0; color:var(--muted); padding:8px 6px;
+    border-radius:7px; font:inherit; font-weight:600; font-size:13px; cursor:pointer; transition:.15s;
+  }
+  .seg button:hover{color:var(--text)}
+  .seg button.active{background:var(--accent); color:#fff}
+  .radios{display:flex;gap:0;background:#0d1117;padding:5px;border-radius:10px;border:1px solid var(--line)}
+  .radio{flex:1;position:relative;display:block;cursor:pointer;margin:0}
+  .radio input{position:absolute;opacity:0;pointer-events:none}
+  .radio span{
+    display:block; padding:9px 6px; border-radius:7px;
+    font-weight:600; font-size:13px; color:var(--muted);
+    text-align:center; transition:.15s;
+  }
+  .radio input:checked + span{background:var(--accent); color:#fff}
+  .radio:hover input:not(:checked) + span{color:var(--text)}
+  .radio input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+  .check{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#c8d0dc;font-weight:600}
+  .check input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;margin:0}
+  .help{margin:0;font-size:12.5px;color:var(--muted)}
+  .meter{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .meter.over{color:var(--danger)}
+  .note{font-size:12.5px;color:var(--warn);min-height:0;opacity:0;transition:opacity .2s;font-variant-numeric:tabular-nums}
+  .note.show{opacity:1;min-height:18px}
+  .status{font-size:13.5px;border-radius:9px;padding:10px 12px;border:1px solid transparent;display:none}
+  .status.show{display:block}
+  .status.err{background:rgba(255,107,107,.09);border-color:rgba(255,107,107,.35);color:#ffb3b3}
+  .status.ok{background:rgba(56,211,159,.08);border-color:rgba(56,211,159,.3);color:#9beccd}
+  .status.warn{background:rgba(255,200,87,.08);border-color:rgba(255,200,87,.3);color:#ffe0a1}
+  .preview{display:flex;align-items:center;justify-content:center;background:#fff;border-radius:12px;padding:14px;min-height:280px;transition:background .15s}
+  .preview canvas{max-width:100%;height:auto;image-rendering:pixelated;display:block;background:#fff}
+  .preview.transparent canvas{
+    background-color:#fff;
+    background-image:
+      linear-gradient(45deg,#d6dae0 25%,transparent 25%),
+      linear-gradient(-45deg,#d6dae0 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#d6dae0 75%),
+      linear-gradient(-45deg,transparent 75%,#d6dae0 75%);
+    background-size:16px 16px;
+    background-position:0 0, 0 8px, 8px -8px, -8px 0;
+  }
+  .meta{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:18px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>*{flex:1;min-width:0}
+  .btn{
+    background:#1e2530; color:var(--text); border:1px solid var(--line); border-radius:10px;
+    padding:11px 14px; font:inherit; font-weight:600; font-size:13.5px; cursor:pointer; transition:.15s;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn:hover:not(:disabled){background:#26303d;border-color:#39424f}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn .dim{color:var(--muted);font-weight:500;font-size:12px}
+  .dl-btn{flex-direction:column;gap:3px;padding:16px 12px}
+  .dl-btn .dl-title{font-size:14px}
+  .dl-btn .dim{font-size:11.5px;letter-spacing:.02em}
+  .svg-btn{flex-direction:column;gap:3px;padding:16px 12px;background:#232b39;border-color:#313b4a}
+  .svg-btn:hover:not(:disabled){background:#2b3545;border-color:#3c4658}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>QR Code Generator</h1>
+    <p class="sub">Everything runs locally in your browser — nothing is uploaded.</p>
+  </header>
+
+  <main>
+    <div class="col">
+      <!-- ── 1 · Content ─────────────────────────────────────── -->
+      <section class="card">
+        <h2>1 · Content</h2>
+
+        <div class="field">
+          <label>Data type</label>
+          <div class="seg" id="typeSeg">
+            <button type="button" data-type="numeric" class="active">Numeric</button>
+            <button type="button" data-type="url">URL</button>
+            <button type="button" data-type="alnum">Alphanumeric</button>
+          </div>
+          <p class="help" id="typeHelp"></p>
+        </div>
+
+        <div class="field">
+          <label for="content">Content</label>
+          <textarea id="content" rows="3" spellcheck="false" autocomplete="off"
+                    placeholder="Enter digits, e.g. 1234-5678_90"></textarea>
+          <div class="meter"><span id="count">0</span> / <span id="limit">—</span> characters</div>
+          <div class="note" id="normalizeNote"></div>
+        </div>
+
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" id="normalize" checked>
+            <span>Normalize whitespace</span>
+          </label>
+          <p class="help">Trim edges, convert Unicode spaces and tabs to regular spaces, remove zero-width characters.</p>
+        </div>
+
+        <div class="field">
+          <label for="ec">Error correction level</label>
+          <select id="ec">
+            <option value="L">L — 7% recoverable</option>
+            <option value="M" selected>M — 15% recoverable (recommended)</option>
+            <option value="Q">Q — 25% recoverable</option>
+            <option value="H">H — 30% recoverable</option>
+          </select>
+          <p class="help">Higher levels survive more damage but hold less data.</p>
+        </div>
+
+        <div class="status" id="status"></div>
+      </section>
+
+      <!-- ── 3 · Download ────────────────────────────────────── -->
+      <section class="card">
+        <h2>3 · Download</h2>
+
+        <div class="field">
+          <label>Background</label>
+          <div class="radios" role="radiogroup" aria-label="Background">
+            <label class="radio">
+              <input type="radio" name="bg" value="white" checked>
+              <span>White</span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="bg" value="transparent">
+              <span>Transparent</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn dl-btn" id="dlSmall">
+            <span class="dl-title">Small PNG</span>
+            <span class="dim">256 × 256 px</span>
+          </button>
+          <button class="btn dl-btn" id="dlLarge">
+            <span class="dl-title">Large PNG</span>
+            <span class="dim">1024 × 1024 px</span>
+          </button>
+        </div>
+
+        <button class="btn svg-btn" id="dlSvg">
+          <span class="dl-title">SVG</span>
+          <span class="dim">Vector — scales to any size</span>
+        </button>
+
+        <p class="help">PNGs are square with a 4-module quiet zone. The SVG uses a viewBox in module units, so it stays sharp at any size and can be edited as text.</p>
+      </section>
+    </div>
+
+    <!-- ── 2 · Preview ────────────────────────────────────────── -->
+    <section class="card">
+      <h2>2 · Preview</h2>
+      <div class="preview" id="preview"><canvas id="canvas" width="300" height="300"></canvas></div>
+      <div class="meta" id="meta"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   GALOIS FIELD GF(256)
+   ═══════════════════════════════════════════════════════════════ */
+const GF_EXP = new Uint8Array(512);
+const GF_LOG = new Uint8Array(256);
+(function initGF() {
+  let x = 1;
+  for (let i = 0; i < 255; i++) {
+    GF_EXP[i] = x;
+    GF_LOG[x] = i;
+    x <<= 1;
+    if (x & 0x100) x ^= 0x11d;
+  }
+  for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+})();
+
+function gfMul(a, b) {
+  if (a === 0 || b === 0) return 0;
+  return GF_EXP[GF_LOG[a] + GF_LOG[b]];
+}
+
+const RS_GEN_CACHE = Object.create(null);
+function rsGenPoly(n) {
+  if (RS_GEN_CACHE[n]) return RS_GEN_CACHE[n];
+  let poly = [1];
+  for (let i = 0; i < n; i++) {
+    const a = GF_EXP[i];
+    const next = new Array(poly.length + 1).fill(0);
+    for (let j = 0; j < poly.length; j++) {
+      next[j]     ^= poly[j];
+      next[j + 1] ^= gfMul(poly[j], a);
+    }
+    poly = next;
+  }
+  return (RS_GEN_CACHE[n] = poly);
+}
+
+function rsEncode(dataBytes, ecCount) {
+  const gen = rsGenPoly(ecCount);
+  const res = dataBytes.concat(new Array(ecCount).fill(0));
+  for (let i = 0; i < dataBytes.length; i++) {
+    const coef = res[i];
+    if (coef !== 0) {
+      for (let j = 0; j < gen.length; j++) {
+        res[i + j] ^= gfMul(gen[j], coef);
+      }
+    }
+  }
+  return res.slice(dataBytes.length);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SPEC TABLES
+   ═══════════════════════════════════════════════════════════════ */
+const RS_BLOCKS_FLAT = [
+  /* v1  */ 1,26,19, 1,26,16, 1,26,13, 1,26,9,
+  /* v2  */ 1,44,34, 1,44,28, 1,44,22, 1,44,16,
+  /* v3  */ 1,70,55, 1,70,44, 2,35,17, 2,35,13,
+  /* v4  */ 1,100,80, 2,50,32, 2,50,24, 4,25,9,
+  /* v5  */ 1,134,108, 2,67,43, 2,33,15,2,34,16, 2,33,11,2,34,12,
+  /* v6  */ 2,86,68, 4,43,27, 4,43,19, 4,43,15,
+  /* v7  */ 2,98,78, 4,49,31, 2,32,14,4,33,15, 4,39,13,1,40,14,
+  /* v8  */ 2,121,97, 2,60,38,2,61,39, 4,40,18,2,41,19, 4,40,14,2,41,15,
+  /* v9  */ 2,146,116, 3,58,36,2,59,37, 4,36,16,4,37,17, 4,36,12,4,37,13,
+  /* v10 */ 2,86,68,2,87,69, 4,69,43,1,70,44, 6,43,19,2,44,20, 6,43,15,2,44,16,
+  /* v11 */ 4,101,81, 1,80,50,4,81,51, 4,50,22,4,51,23, 3,36,12,8,37,13,
+  /* v12 */ 2,116,92,2,117,93, 6,58,36,2,59,37, 4,46,20,6,47,21, 7,42,14,4,43,15,
+  /* v13 */ 4,133,107, 8,59,37,1,60,38, 8,44,20,4,45,21, 12,33,11,4,34,12,
+  /* v14 */ 3,145,115,1,146,116, 4,64,40,5,65,41, 11,36,16,5,37,17, 11,36,12,5,37,13,
+  /* v15 */ 5,109,87,1,110,88, 5,65,41,5,66,42, 5,54,24,7,55,25, 11,36,12,7,37,13,
+  /* v16 */ 5,122,98,1,123,99, 7,73,45,3,74,46, 15,43,19,2,44,20, 3,45,15,13,46,16,
+  /* v17 */ 1,135,107,5,136,108, 10,74,46,1,75,47, 1,50,22,15,51,23, 2,42,14,17,43,15,
+  /* v18 */ 5,150,120,1,151,121, 9,69,43,4,70,44, 17,50,22,1,51,23, 2,42,14,19,43,15,
+  /* v19 */ 3,141,113,4,142,114, 3,70,44,11,71,45, 17,47,21,4,48,22, 9,39,13,16,40,14,
+  /* v20 */ 3,135,107,5,136,108, 3,67,41,13,68,42, 15,54,24,5,55,25, 15,43,15,10,44,16,
+  /* v21 */ 4,144,116,4,145,117, 17,68,42, 17,50,22,6,51,23, 19,46,16,6,47,17,
+  /* v22 */ 2,139,111,7,140,112, 17,74,46, 7,54,24,16,55,25, 34,37,13,
+  /* v23 */ 4,151,121,5,152,122, 4,75,47,14,76,48, 11,54,24,14,55,25, 16,45,15,14,46,16,
+  /* v24 */ 6,147,117,4,148,118, 6,73,45,14,74,46, 11,54,24,16,55,25, 30,46,16,2,47,17,
+  /* v25 */ 8,132,106,4,133,107, 8,75,47,13,76,48, 7,54,24,22,55,25, 22,45,15,13,46,16,
+  /* v26 */ 10,142,114,2,143,115, 19,74,46,4,75,47, 28,50,22,6,51,23, 33,46,16,4,47,17,
+  /* v27 */ 8,152,122,4,153,123, 22,73,45,3,74,46, 8,53,23,26,54,24, 12,45,15,28,46,16,
+  /* v28 */ 3,147,117,10,148,118, 3,73,45,23,74,46, 4,54,24,31,55,25, 11,45,15,31,46,16,
+  /* v29 */ 7,146,116,7,147,117, 21,73,45,7,74,46, 1,53,23,37,54,24, 19,45,15,26,46,16,
+  /* v30 */ 5,145,115,10,146,116, 19,75,47,10,76,48, 15,54,24,25,55,25, 23,45,15,25,46,16,
+  /* v31 */ 13,145,115,3,146,116, 2,74,46,29,75,47, 42,54,24,1,55,25, 23,45,15,28,46,16,
+  /* v32 */ 17,145,115, 10,74,46,23,75,47, 10,54,24,35,55,25, 19,45,15,35,46,16,
+  /* v33 */ 17,145,115,1,146,116, 14,74,46,21,75,47, 29,54,24,19,55,25, 11,45,15,46,46,16,
+  /* v34 */ 13,145,115,6,146,116, 14,74,46,23,75,47, 44,54,24,7,55,25, 59,46,16,1,47,17,
+  /* v35 */ 12,151,121,7,152,122, 12,75,47,26,76,48, 39,54,24,14,55,25, 22,45,15,41,46,16,
+  /* v36 */ 6,151,121,14,152,122, 6,75,47,34,76,48, 46,54,24,10,55,25, 2,45,15,64,46,16,
+  /* v37 */ 17,152,122,4,153,123, 29,74,46,14,75,47, 49,54,24,10,55,25, 24,45,15,46,46,16,
+  /* v38 */ 4,152,122,18,153,123, 13,74,46,32,75,47, 48,54,24,14,55,25, 42,45,15,32,46,16,
+  /* v39 */ 20,147,117,4,148,118, 40,75,47,7,76,48, 43,54,24,22,55,25, 10,45,15,67,46,16,
+  /* v40 */ 19,148,118,6,149,119, 18,75,47,31,76,48, 34,54,24,34,55,25, 20,45,15,61,46,16
+];
+
+function rawCodewords(ver) {
+  let result = (16 * ver + 128) * ver + 64;
+  if (ver >= 2) {
+    const numAlign = Math.floor(ver / 7) + 2;
+    result -= (25 * numAlign - 10) * numAlign - 55;
+    if (ver >= 7) result -= 36;
+  }
+  return Math.floor(result / 8);
+}
+
+const BLOCKS = (function () {
+  const nested = [];
+  let ptr = 0;
+  for (let v = 1; v <= 40; v++) {
+    const target = rawCodewords(v);
+    const row = [];
+    for (let e = 0; e < 4; e++) {
+      const groups = [];
+      let sum = 0;
+      while (sum < target) {
+        const count = RS_BLOCKS_FLAT[ptr++];
+        const total = RS_BLOCKS_FLAT[ptr++];
+        const data  = RS_BLOCKS_FLAT[ptr++];
+        if (count === undefined) throw new Error('RS_BLOCKS table exhausted at v' + v + ' ec' + e);
+        groups.push({ count, total, data });
+        sum += count * total;
+      }
+      row.push(groups);
+    }
+    nested.push(row);
+  }
+  return nested;
+})();
+
+const ALIGN = [
+  [], [], [6,18], [6,22], [6,26], [6,30], [6,34], [6,22,38], [6,24,42], [6,26,46],
+  [6,28,50], [6,30,54], [6,32,58], [6,34,62], [6,26,46,66], [6,26,48,70],
+  [6,26,50,74], [6,30,54,78], [6,30,56,82], [6,30,58,86], [6,34,62,90],
+  [6,28,50,72,94], [6,26,50,74,98], [6,30,54,78,102], [6,28,54,80,106],
+  [6,32,58,84,110], [6,30,58,86,114], [6,34,62,90,118], [6,26,50,74,98,122],
+  [6,30,54,78,102,126], [6,26,52,78,104,130], [6,30,56,82,108,134],
+  [6,34,60,86,112,138], [6,30,58,86,114,142], [6,34,62,90,118,146],
+  [6,30,54,78,102,126,150], [6,24,50,76,102,128,154], [6,28,54,80,106,132,158],
+  [6,32,58,84,110,136,162], [6,26,54,82,110,138,166], [6,30,58,86,114,142,170]
+];
+
+const EC_INDEX  = { L: 0, M: 1, Q: 2, H: 3 };
+const EC_FORMAT = { L: 1, M: 0, Q: 3, H: 2 };
+const ALNUM_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════════ */
+function getBlockList(version, ecIdx) {
+  const groups = BLOCKS[version - 1][ecIdx];
+  const out = [];
+  for (let g = 0; g < groups.length; g++) {
+    for (let k = 0; k < groups[g].count; k++) {
+      out.push({ total: groups[g].total, data: groups[g].data });
+    }
+  }
+  return out;
+}
+
+function totalDataCodewords(version, ecIdx) {
+  const groups = BLOCKS[version - 1][ecIdx];
+  let sum = 0;
+  for (let i = 0; i < groups.length; i++) sum += groups[i].count * groups[i].data;
+  return sum;
+}
+
+function toUtf8(str) {
+  const out = [];
+  for (let i = 0; i < str.length; i++) {
+    const cp = str.codePointAt(i);
+    if (cp > 0xFFFF) i++;
+    if (cp < 0x80) out.push(cp);
+    else if (cp < 0x800) out.push(0xc0 | (cp >> 6), 0x80 | (cp & 63));
+    else if (cp < 0x10000) out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+    else out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+  }
+  return out;
+}
+
+function isAlnumString(s) {
+  for (let i = 0; i < s.length; i++) {
+    if (ALNUM_CHARS.indexOf(s[i]) < 0) return false;
+  }
+  return true;
+}
+
+function detectMode(s) {
+  if (s.length === 0) return 'byte';
+  if (/^[0-9]+$/.test(s)) return 'numeric';
+  if (isAlnumString(s)) return 'alnum';
+  return 'byte';
+}
+
+function ccBitsFor(mode, version) {
+  if (mode === 'numeric') return version < 10 ? 10 : version < 27 ? 12 : 14;
+  if (mode === 'alnum')   return version < 10 ? 9  : version < 27 ? 11 : 13;
+  return version < 10 ? 8 : 16;
+}
+
+function payloadBits(text, mode) {
+  if (mode === 'numeric') return Math.floor(text.length / 3) * 10 + [0, 4, 7][text.length % 3];
+  if (mode === 'alnum')   return Math.floor(text.length / 2) * 11 + (text.length % 2) * 6;
+  return toUtf8(text).length * 8;
+}
+
+function totalBitLength(text, mode, version) {
+  return 4 + ccBitsFor(mode, version) + payloadBits(text, mode);
+}
+
+function maxCharsFor(mode, ecIdx) {
+  let best = 0;
+  for (let v = 1; v <= 40; v++) {
+    const avail = totalDataCodewords(v, ecIdx) * 8 - 4 - ccBitsFor(mode, v);
+    if (avail <= 0) continue;
+    let n;
+    if (mode === 'numeric') {
+      const t = Math.floor(avail / 10), rem = avail - t * 10;
+      n = t * 3 + (rem >= 7 ? 2 : rem >= 4 ? 1 : 0);
+    } else if (mode === 'alnum') {
+      const t = Math.floor(avail / 11), rem = avail - t * 11;
+      n = t * 2 + (rem >= 6 ? 1 : 0);
+    } else {
+      n = Math.floor(avail / 8);
+    }
+    if (n > best) best = n;
+  }
+  return best;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BCH CODES
+   ═══════════════════════════════════════════════════════════════ */
+function bchDigit(v) { let n = 0; while (v !== 0) { n++; v >>>= 1; } return n; }
+
+function bchFormatInfo(data) {
+  const G15 = 0x537, G15_MASK = 0x5412;
+  let d = data << 10;
+  while (bchDigit(d) - bchDigit(G15) >= 0) d ^= G15 << (bchDigit(d) - bchDigit(G15));
+  return ((data << 10) | d) ^ G15_MASK;
+}
+
+function bchVersionInfo(version) {
+  const G18 = 0x1f25;
+  let d = version << 12;
+  while (bchDigit(d) - bchDigit(G18) >= 0) d ^= G18 << (bchDigit(d) - bchDigit(G18));
+  return (version << 12) | d;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MASKS & PENALTY
+   ═══════════════════════════════════════════════════════════════ */
+function maskAt(mask, r, c) {
+  switch (mask) {
+    case 0: return (r + c) % 2 === 0;
+    case 1: return r % 2 === 0;
+    case 2: return c % 3 === 0;
+    case 3: return (r + c) % 3 === 0;
+    case 4: return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0;
+    case 5: return (r * c) % 2 + (r * c) % 3 === 0;
+    case 6: return ((r * c) % 2 + (r * c) % 3) % 2 === 0;
+    case 7: return ((r * c) % 3 + (r + c) % 2) % 2 === 0;
+  }
+  return false;
+}
+
+function penaltyScore(m, size) {
+  let score = 0;
+
+  for (let r = 0; r < size; r++) {
+    let run = 1;
+    for (let c = 1; c < size; c++) {
+      if (m[r][c] === m[r][c - 1]) run++;
+      else { if (run >= 5) score += 3 + (run - 5); run = 1; }
+    }
+    if (run >= 5) score += 3 + (run - 5);
+  }
+  for (let c = 0; c < size; c++) {
+    let run = 1;
+    for (let r = 1; r < size; r++) {
+      if (m[r][c] === m[r - 1][c]) run++;
+      else { if (run >= 5) score += 3 + (run - 5); run = 1; }
+    }
+    if (run >= 5) score += 3 + (run - 5);
+  }
+
+  for (let r = 0; r < size - 1; r++) {
+    for (let c = 0; c < size - 1; c++) {
+      const v = m[r][c];
+      if (v === m[r][c + 1] && v === m[r + 1][c] && v === m[r + 1][c + 1]) score += 3;
+    }
+  }
+
+  const P1 = [1,0,1,1,1,0,1,0,0,0,0];
+  const P2 = [0,0,0,0,1,0,1,1,1,0,1];
+  const match = function (arr, i) {
+    let a = true, b = true;
+    for (let k = 0; k < 11; k++) {
+      if (arr[i + k] !== P1[k]) a = false;
+      if (arr[i + k] !== P2[k]) b = false;
+      if (!a && !b) return false;
+    }
+    return true;
+  };
+  for (let r = 0; r < size; r++) {
+    const row = m[r];
+    for (let c = 0; c <= size - 11; c++) if (match(row, c)) score += 40;
+  }
+  for (let c = 0; c < size; c++) {
+    const col = new Array(size);
+    for (let r = 0; r < size; r++) col[r] = m[r][c];
+    for (let r = 0; r <= size - 11; r++) if (match(col, r)) score += 40;
+  }
+
+  let dark = 0;
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (m[r][c]) dark++;
+  const pct = (dark * 100) / (size * size);
+  score += Math.floor(Math.abs(pct - 50) / 5) * 10;
+
+  return score;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN QR ENCODER
+   ═══════════════════════════════════════════════════════════════ */
+function buildQR(text, ecLevel) {
+  const ecIdx = EC_INDEX[ecLevel];
+  const mode = detectMode(text);
+  const utf8 = mode === 'byte' ? toUtf8(text) : null;
+  const charCount = mode === 'byte' ? utf8.length : text.length;
+
+  let version = 0;
+  for (let v = 1; v <= 40; v++) {
+    if (totalBitLength(text, mode, v) <= totalDataCodewords(v, ecIdx) * 8) { version = v; break; }
+  }
+  if (!version) throw new Error('Too much data for a QR code at this error-correction level.');
+
+  const blocks = getBlockList(version, ecIdx);
+  const totalData = totalDataCodewords(version, ecIdx);
+  const capacityBits = totalData * 8;
+
+  const bits = [];
+  const pushBits = function (val, len) { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+
+  pushBits(mode === 'numeric' ? 1 : mode === 'alnum' ? 2 : 4, 4);
+  pushBits(charCount, ccBitsFor(mode, version));
+
+  if (mode === 'numeric') {
+    for (let i = 0; i < text.length; i += 3) {
+      const chunk = text.substr(i, 3);
+      pushBits(parseInt(chunk, 10), chunk.length === 3 ? 10 : chunk.length === 2 ? 7 : 4);
+    }
+  } else if (mode === 'alnum') {
+    for (let i = 0; i < text.length; i += 2) {
+      if (i + 1 < text.length) {
+        pushBits(ALNUM_CHARS.indexOf(text[i]) * 45 + ALNUM_CHARS.indexOf(text[i + 1]), 11);
+      } else {
+        pushBits(ALNUM_CHARS.indexOf(text[i]), 6);
+      }
+    }
+  } else {
+    for (let i = 0; i < utf8.length; i++) pushBits(utf8[i], 8);
+  }
+
+  for (let i = 0; i < 4 && bits.length < capacityBits; i++) bits.push(0);
+  while (bits.length % 8 !== 0) bits.push(0);
+
+  const PAD = [0xEC, 0x11];
+  let pi = 0;
+  while (bits.length < capacityBits) pushBits(PAD[pi++ % 2], 8);
+
+  const dataBytes = [];
+  for (let i = 0; i < bits.length; i += 8) {
+    let b = 0;
+    for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+    dataBytes.push(b);
+  }
+
+  const dataBlocks = [], ecBlocks = [];
+  let offset = 0;
+  for (let b = 0; b < blocks.length; b++) {
+    const d = dataBytes.slice(offset, offset + blocks[b].data);
+    offset += blocks[b].data;
+    dataBlocks.push(d);
+    ecBlocks.push(rsEncode(d, blocks[b].total - blocks[b].data));
+  }
+
+  const finalBytes = [];
+  let maxDataLen = 0;
+  for (let i = 0; i < blocks.length; i++) if (blocks[i].data > maxDataLen) maxDataLen = blocks[i].data;
+  for (let i = 0; i < maxDataLen; i++) {
+    for (let k = 0; k < blocks.length; k++) {
+      if (i < blocks[k].data) finalBytes.push(dataBlocks[k][i]);
+    }
+  }
+  const ecLen = blocks[0].total - blocks[0].data;
+  for (let i = 0; i < ecLen; i++) {
+    for (let k = 0; k < blocks.length; k++) finalBytes.push(ecBlocks[k][i]);
+  }
+
+  /* ═══ matrix ═══ */
+  const size = version * 4 + 17;
+  const base = [];
+  const reserved = [];
+  for (let r = 0; r < size; r++) {
+    base.push(new Array(size).fill(-1));
+    reserved.push(new Array(size).fill(false));
+  }
+
+  const put = function (r, c, v) {
+    if (r >= 0 && r < size && c >= 0 && c < size) { base[r][c] = v; reserved[r][c] = true; }
+  };
+
+  const placeFinder = function (r0, c0) {
+    for (let r = -1; r <= 7; r++) {
+      for (let c = -1; c <= 7; c++) {
+        let v = 0;
+        if (r >= 0 && r <= 6 && c >= 0 && c <= 6) {
+          v = (r === 0 || r === 6 || c === 0 || c === 6 ||
+               (r >= 2 && r <= 4 && c >= 2 && c <= 4)) ? 1 : 0;
+        }
+        put(r0 + r, c0 + c, v);
+      }
+    }
+  };
+  placeFinder(0, 0);
+  placeFinder(0, size - 7);
+  placeFinder(size - 7, 0);
+
+  const ap = ALIGN[version];
+  for (let ai = 0; ai < ap.length; ai++) {
+    for (let aj = 0; aj < ap.length; aj++) {
+      const r = ap[ai], c = ap[aj];
+      if ((r <= 8 && c <= 8) || (r <= 8 && c >= size - 9) || (r >= size - 9 && c <= 8)) continue;
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          put(r + dr, c + dc, Math.max(Math.abs(dr), Math.abs(dc)) === 1 ? 0 : 1);
+        }
+      }
+    }
+  }
+
+  for (let i = 8; i <= size - 9; i++) {
+    if (!reserved[6][i]) put(6, i, i % 2 === 0 ? 1 : 0);
+    if (!reserved[i][6]) put(i, 6, i % 2 === 0 ? 1 : 0);
+  }
+
+  put(size - 8, 8, 1);
+
+  for (let i = 0; i < 15; i++) {
+    let r;
+    if (i < 6) r = i; else if (i < 8) r = i + 1; else r = size - 15 + i;
+    reserved[r][8] = true;
+    let c;
+    if (i < 8) c = size - 1 - i; else if (i < 9) c = 7; else c = 14 - i;
+    reserved[8][c] = true;
+  }
+
+  if (version >= 7) {
+    for (let i = 0; i < 18; i++) {
+      reserved[Math.floor(i / 3)][size - 11 + (i % 3)] = true;
+      reserved[size - 11 + (i % 3)][Math.floor(i / 3)] = true;
+    }
+  }
+
+  const totalBits = finalBytes.length * 8;
+  const getBit = function (i) { return (finalBytes[i >> 3] >> (7 - (i & 7))) & 1; };
+
+  let bitIdx = 0;
+  let row = size - 1;
+  let inc = -1;
+  for (let col = size - 1; col > 0; col -= 2) {
+    if (col === 6) col = 5;
+    for (;;) {
+      for (let k = 0; k < 2; k++) {
+        const cc = col - k;
+        if (!reserved[row][cc]) {
+          base[row][cc] = bitIdx < totalBits ? getBit(bitIdx) : 0;
+          bitIdx++;
+        }
+      }
+      row += inc;
+      if (row < 0 || row >= size) { row -= inc; inc = -inc; break; }
+    }
+  }
+
+  let bestMatrix = null, bestPenalty = Infinity, bestMask = 0;
+
+  for (let mask = 0; mask < 8; mask++) {
+    const test = [];
+    for (let r = 0; r < size; r++) test.push(base[r].slice());
+
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (!reserved[r][c] && maskAt(mask, r, c)) test[r][c] ^= 1;
+      }
+    }
+
+    const fmt = bchFormatInfo((EC_FORMAT[ecLevel] << 3) | mask);
+    for (let i = 0; i < 15; i++) {
+      const bit = (fmt >> i) & 1;
+      let r;
+      if (i < 6) r = i; else if (i < 8) r = i + 1; else r = size - 15 + i;
+      test[r][8] = bit;
+      let c;
+      if (i < 8) c = size - 1 - i; else if (i < 9) c = 7; else c = 14 - i;
+      test[8][c] = bit;
+    }
+    test[size - 8][8] = 1;
+
+    if (version >= 7) {
+      const vi = bchVersionInfo(version);
+      for (let i = 0; i < 18; i++) {
+        const bit = (vi >> i) & 1;
+        test[Math.floor(i / 3)][size - 11 + (i % 3)] = bit;
+        test[size - 11 + (i % 3)][Math.floor(i / 3)] = bit;
+      }
+    }
+
+    const p = penaltyScore(test, size);
+    if (p < bestPenalty) { bestPenalty = p; bestMatrix = test; bestMask = mask; }
+  }
+
+  return {
+    modules: bestMatrix,
+    size: size,
+    version: version,
+    mask: bestMask,
+    mode: mode,
+    ecLevel: ecLevel,
+    charCount: text.length
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDERING
+   ═══════════════════════════════════════════════════════════════ */
+const QUIET = 4;
+
+function renderQR(qr, targetPx, exact, background) {
+  const n = qr.size + QUIET * 2;
+  const scale = Math.max(1, Math.floor(targetPx / n));
+  const drawn = n * scale;
+  const px = exact ? targetPx : drawn;
+
+  const cv = document.createElement('canvas');
+  cv.width = px;
+  cv.height = px;
+
+  const ctx = cv.getContext('2d');
+  if (background === 'white') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, px, px);
+  }
+  ctx.fillStyle = '#000000';
+
+  const off = Math.floor((px - drawn) / 2);
+  for (let r = 0; r < qr.size; r++) {
+    const row = qr.modules[r];
+    for (let c = 0; c < qr.size; c++) {
+      if (row[c]) ctx.fillRect(off + (c + QUIET) * scale, off + (r + QUIET) * scale, scale, scale);
+    }
+  }
+
+  return { canvas: cv, pixels: px, scale: scale };
+}
+
+/* SVG with a viewBox measured in module units. Each module is exactly
+   1 unit, so the file is resolution-independent and tiny. Horizontal
+   runs of dark modules are merged into single path segments, which
+   shrinks the file substantially for structured patterns. */
+function renderSVG(qr, background) {
+  const n = qr.size + QUIET * 2;
+  const parts = [];
+  parts.push(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + n + ' ' + n + '" ' +
+    'width="512" height="512" shape-rendering="crispEdges">'
+  );
+  parts.push('<title>QR Code</title>');
+
+  if (background === 'white') {
+    parts.push('<rect width="' + n + '" height="' + n + '" fill="#ffffff"/>');
+  }
+
+  const d = [];
+  for (let r = 0; r < qr.size; r++) {
+    const row = qr.modules[r];
+    let c = 0;
+    while (c < qr.size) {
+      if (row[c]) {
+        const start = c;
+        while (c < qr.size && row[c]) c++;
+        const len = c - start;
+        const x = start + QUIET;
+        const y = r + QUIET;
+        d.push('M' + x + ' ' + y + 'h' + len + 'v1h-' + len + 'z');
+      } else {
+        c++;
+      }
+    }
+  }
+
+  parts.push('<path d="' + d.join('') + '" fill="#000000"/>');
+  parts.push('</svg>');
+  return parts.join('');
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+}
+
+function downloadCanvas(canvas, filename) {
+  canvas.toBlob(function (blob) {
+    if (blob) downloadBlob(blob, filename);
+  }, 'image/png');
+}
+
+function downloadSVG(svgString, filename) {
+  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  downloadBlob(blob, filename);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WHITESPACE NORMALIZATION
+   ═══════════════════════════════════════════════════════════════ */
+const ZERO_WIDTH_RE = /[\u200B-\u200D\u2060\uFEFF]/g;
+
+function normalizeWhitespace(raw, trim) {
+  const labels = [];
+  let out = raw;
+
+  let before = out;
+  out = out.replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
+  if (out !== before) labels.push('Unicode spaces');
+
+  before = out;
+  out = out.replace(/\t/g, ' ');
+  if (out !== before) labels.push('tabs');
+
+  before = out;
+  out = out.replace(ZERO_WIDTH_RE, '');
+  if (out !== before) labels.push('zero-width characters');
+
+  before = out;
+  out = out.replace(/\r\n?/g, '\n');
+  if (out !== before) labels.push('line endings');
+
+  if (trim) {
+    before = out;
+    out = out.trim();
+    if (out !== before) labels.push('trimmed');
+  }
+
+  return { text: out, labels: labels, changed: labels.length > 0 };
+}
+
+/* Every normalization rule except zero-width removal is a 1:1 character
+   substitution, so the cursor only needs to shift by the count of
+   zero-width characters removed before it. */
+function shiftCursorForRemovals(raw, pos) {
+  ZERO_WIDTH_RE.lastIndex = 0;
+  let removed = 0;
+  let m;
+  while ((m = ZERO_WIDTH_RE.exec(raw)) !== null) {
+    if (m.index < pos) removed++;
+    else break;
+  }
+  return Math.max(0, pos - removed);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VALIDATION
+   ═══════════════════════════════════════════════════════════════ */
+const TYPE_HELP = {
+  numeric: 'Digits only — plus spaces, hyphens and underscores. Uses numeric encoding when possible, otherwise falls back to a denser mode.',
+  url:     'A web address such as https://example.com or www.example.com/page.',
+  alnum:   'Printable ASCII (letters, digits, punctuation and spaces). Uppercase + digits use the compact alphanumeric encoding.'
+};
+
+const TYPE_PLACEHOLDER = {
+  numeric: 'e.g. 1234-5678_90',
+  url:     'e.g. https://example.com/page',
+  alnum:   'e.g. HELLO WORLD 123'
+};
+
+function validateNumeric(text) {
+  const bad = text.match(/[^0-9 \-_]/);
+  if (bad) return 'Invalid character "' + bad[0] + '". Numeric input allows digits, spaces, hyphens and underscores only.';
+  return null;
+}
+
+function validateUrl(text) {
+  if (/\s/.test(text)) return 'A URL cannot contain spaces.';
+  if (/^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test(text)) return null;
+  if (/^[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)+([\/?#].*)?$/.test(text)) return null;
+  return 'Enter a valid URL, e.g. https://example.com or www.example.com/page.';
+}
+
+function validateAlnum(text) {
+  const bad = text.match(/[^\x20-\x7E]/);
+  if (bad) return 'Invalid character "' + bad[0] + '". Alphanumeric input allows printable ASCII only.';
+  return null;
+}
+
+const VALIDATORS = { numeric: validateNumeric, url: validateUrl, alnum: validateAlnum };
+
+/* ═══════════════════════════════════════════════════════════════
+   UI
+   ═══════════════════════════════════════════════════════════════ */
+const el = function (id) { return document.getElementById(id); };
+
+const typeSegEl     = el('typeSeg');
+const typeHelpEl    = el('typeHelp');
+const contentEl     = el('content');
+const normalizeEl   = el('normalize');
+const normalizeNote = el('normalizeNote');
+const ecEl          = el('ec');
+const countEl       = el('count');
+const limitEl       = el('limit');
+const statusEl      = el('status');
+const metaEl        = el('meta');
+const previewEl     = el('preview');
+const canvasEl      = el('canvas');
+const btnSmall      = el('dlSmall');
+const btnLarge      = el('dlLarge');
+const btnSvg        = el('dlSvg');
+
+const PREVIEW_MAX = 340;
+const SMALL_PX    = 256;
+const LARGE_PX    = 1024;
+
+let currentType = 'numeric';
+let currentBg   = 'white';
+let currentQR   = null;
+let noteTimer   = null;
+
+function setStatus(kind, message) {
+  statusEl.className = 'status show ' + kind;
+  statusEl.textContent = message;
+}
+function clearStatus() {
+  statusEl.className = 'status';
+  statusEl.textContent = '';
+}
+
+function showNormalizeNote(labels) {
+  if (labels.length === 0) return;
+  normalizeNote.textContent = 'Normalized: ' + labels.join(', ') + '.';
+  normalizeNote.classList.add('show');
+  if (noteTimer) clearTimeout(noteTimer);
+  noteTimer = setTimeout(function () {
+    normalizeNote.classList.remove('show');
+    normalizeNote.textContent = '';
+  }, 5000);
+}
+function clearNormalizeNote() {
+  if (noteTimer) clearTimeout(noteTimer);
+  normalizeNote.classList.remove('show');
+  normalizeNote.textContent = '';
+}
+
+function setType(type) {
+  currentType = type;
+  Array.prototype.forEach.call(typeSegEl.children, function (b) {
+    b.classList.toggle('active', b.dataset.type === type);
+  });
+  typeHelpEl.textContent = TYPE_HELP[type];
+  contentEl.placeholder = TYPE_PLACEHOLDER[type];
+  update();
+}
+
+function modeLabel(mode) {
+  return mode === 'numeric' ? 'Numeric' : mode === 'alnum' ? 'Alphanumeric' : 'Byte (UTF-8)';
+}
+
+/* Applied on every input event. Character-level rules only (no trim),
+   so typing a trailing space isn't immediately stripped. Cursor is
+   preserved across the rewrite. */
+function normalizeOnInput() {
+  if (!normalizeEl.checked) return;
+  const raw = contentEl.value;
+  const res = normalizeWhitespace(raw, false);
+  if (!res.changed) return;
+
+  const pos = contentEl.selectionStart;
+  const newPos = shiftCursorForRemovals(raw, pos);
+  contentEl.value = res.text;
+  contentEl.setSelectionRange(newPos, newPos);
+  showNormalizeNote(res.labels);
+}
+
+function normalizeOnBlur() {
+  if (!normalizeEl.checked) return;
+  const raw = contentEl.value;
+  const res = normalizeWhitespace(raw, true);
+  if (!res.changed) return;
+  contentEl.value = res.text;
+  showNormalizeNote(res.labels);
+  update();
+}
+
+function update() {
+  const text = contentEl.value;
+  const ec = ecEl.value;
+  const ecIdx = EC_INDEX[ec];
+
+  const mode = detectMode(text);
+  const limit = maxCharsFor(mode, ecIdx);
+
+  countEl.textContent = text.length.toLocaleString();
+  limitEl.textContent = limit.toLocaleString();
+  countEl.parentElement.classList.toggle('over', text.length > limit);
+
+  currentQR = null;
+  btnSmall.disabled = btnLarge.disabled = btnSvg.disabled = true;
+
+  if (text.length === 0) {
+    clearStatus();
+    metaEl.textContent = '';
+    drawBlank();
+    return;
+  }
+
+  const err = VALIDATORS[currentType](text);
+  if (err) {
+    setStatus('err', err);
+    metaEl.textContent = '';
+    drawBlank();
+    return;
+  }
+
+  const measured = mode === 'byte' ? toUtf8(text).length : text.length;
+  if (measured > limit) {
+    setStatus('err', 'Too long for this error-correction level. Maximum ' + limit.toLocaleString() +
+                      ' characters in ' + modeLabel(mode) + '; you have ' + measured.toLocaleString() + '. ' +
+                      'Shorten the content or choose a lower EC level.');
+    metaEl.textContent = '';
+    drawBlank();
+    return;
+  }
+
+  let qr;
+  try {
+    qr = buildQR(text, ec);
+  } catch (e) {
+    setStatus('err', e.message);
+    metaEl.textContent = '';
+    drawBlank();
+    return;
+  }
+
+  currentQR = qr;
+
+  if (currentType === 'numeric' && /[^0-9]/.test(text)) {
+    setStatus('warn', 'Contains non-digit characters, so ' + modeLabel(mode) +
+                      ' encoding is used (numeric encoding not possible).');
+  } else {
+    setStatus('ok', 'Valid — ' + modeLabel(mode) + ' encoding, version ' + qr.version + '.');
+  }
+
+  drawPreview(qr);
+
+  metaEl.textContent =
+    'Version ' + qr.version + ' · ' + qr.size + '×' + qr.size + ' modules · ' +
+    qr.charCount + ' characters · ' + modeLabel(qr.mode) + ' · EC ' + qr.ecLevel +
+    ' · mask ' + qr.mask;
+
+  btnSmall.disabled = btnLarge.disabled = btnSvg.disabled = false;
+}
+
+function drawBlank() {
+  const ctx = canvasEl.getContext('2d');
+  canvasEl.width = 280;
+  canvasEl.height = 280;
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  if (currentBg === 'white') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+  }
+  ctx.fillStyle = '#c9ced8';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Preview', canvasEl.width / 2, canvasEl.height / 2);
+}
+
+function drawPreview(qr) {
+  const out = renderQR(qr, PREVIEW_MAX, false, currentBg);
+  canvasEl.width = out.canvas.width;
+  canvasEl.height = out.canvas.height;
+  const ctx = canvasEl.getContext('2d');
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  ctx.drawImage(out.canvas, 0, 0);
+}
+
+/* ── events ── */
+typeSegEl.addEventListener('click', function (e) {
+  const btn = e.target.closest('button[data-type]');
+  if (btn) setType(btn.dataset.type);
+});
+
+contentEl.addEventListener('input', function (e) {
+  if (e.isComposing) return;
+  clearNormalizeNote();
+  normalizeOnInput();
+  update();
+});
+
+contentEl.addEventListener('blur', normalizeOnBlur);
+
+normalizeEl.addEventListener('change', function () {
+  if (!normalizeEl.checked) {
+    clearNormalizeNote();
+    return;
+  }
+  normalizeOnBlur();
+});
+
+ecEl.addEventListener('change', update);
+
+Array.prototype.forEach.call(document.querySelectorAll('input[name="bg"]'), function (r) {
+  r.addEventListener('change', function () {
+    if (!r.checked) return;
+    currentBg = r.value;
+    previewEl.classList.toggle('transparent', currentBg === 'transparent');
+    update();
+  });
+});
+
+btnSmall.addEventListener('click', function () {
+  if (!currentQR) return;
+  const out = renderQR(currentQR, SMALL_PX, true, currentBg);
+  downloadCanvas(out.canvas, 'qrcode-256.png');
+});
+
+btnLarge.addEventListener('click', function () {
+  if (!currentQR) return;
+  const out = renderQR(currentQR, LARGE_PX, true, currentBg);
+  downloadCanvas(out.canvas, 'qrcode-1024.png');
+});
+
+btnSvg.addEventListener('click', function () {
+  if (!currentQR) return;
+  const svg = renderSVG(currentQR, currentBg);
+  downloadSVG(svg, 'qrcode.svg');
+});
+
+/* ── boot ── */
+setType('numeric');
+drawBlank();
+
+})();
+</script>
+</body>
+</html>
+
+<!--
+Moving the consts to json files and functions to js files would considerably clean up this code. 
+If you're looking to implement it in a more flexible workflow you should refactor accordingly. 
+This version was built specifically to be single file portable which led to some less elegant code choices. 
+-->
